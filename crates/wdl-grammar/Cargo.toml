@@ -10,9 +10,13 @@ homepage.workspace = true
 repository = "https://github.com/stjude-rust-labs/sprocket/tree/main/crates/wdl-grammar"
 documentation = "https://docs.rs/wdl-grammar"
 
+[features]
+python = ["dep:pyo3"]
+
 [dependencies]
 codespan-reporting = { workspace = true }
 logos = { workspace = true }
+pyo3 = { workspace = true, optional = true }
 rowan = { workspace = true }
 serde = { workspace = true }
 serde_with = { workspace = true }
