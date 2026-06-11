@@ -49,11 +49,16 @@ mod sprocket_bio {
             Ok(())
         }
 
-        register_submodules(
-            module,
-            "sprocket_bio",
-            // Get the `sys.modules` dictionary.
-            &module.py().import("sys")?.getattr("modules")?,
-        )
+        // Get the `sys.modules` dictionary.
+        let sys_modules = module.py().import("sys")?.getattr("modules")?;
+
+        // Support `from sprocket_bio.diagnostics import Mode`. This is the intended
+        // usage.
+        register_submodules(module, "sprocket_bio", &sys_modules)?;
+
+        // Support `from sprocket_bio.sprocket_bio.diagnostics import Mode`. This isn't
+        // intended usage, but matches the actual layout of the Python package
+        // and is necessary for `mypy.stubtest` to work.
+        register_submodules(module, "sprocket_bio.sprocket_bio", &sys_modules)
     }
 }
