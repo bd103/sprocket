@@ -10,7 +10,7 @@ use pyo3::prelude::*;
 /// Python bindings to [Sprocket](https://sprocket.bio), a bioinformatics toolkit for Workflow
 /// Description Language (WDL).
 #[pymodule]
-mod sprocket_bio {
+mod _sprocket_bio {
     use pyo3::prelude::*;
     use pyo3::types::PyString;
 
@@ -60,11 +60,6 @@ mod sprocket_bio {
 
         // Support `from sprocket_bio.diagnostics import Mode`. This is the intended
         // usage.
-        register_submodules(module, "sprocket_bio", &sys_modules)?;
-
-        // Support `from sprocket_bio.sprocket_bio.diagnostics import Mode`. This isn't
-        // intended usage, but matches the actual layout of the Python package
-        // and is necessary for `mypy.stubtest` to work.
-        register_submodules(module, "sprocket_bio.sprocket_bio", &sys_modules)
+        register_submodules(module, "sprocket_bio", &sys_modules)
     }
 }

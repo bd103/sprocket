@@ -1,3 +1,11 @@
-from .sprocket_bio.diagnostics import *
+import typing
+
+@typing.final
+class Mode:
+    FULL: Mode
+    ONE_LINE: Mode
+
+    @staticmethod
+    def default() -> Mode: ...
 
 __all__ = ["Mode"]
