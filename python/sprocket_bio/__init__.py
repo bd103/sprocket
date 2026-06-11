@@ -5,4 +5,4 @@ from . import sprocket_bio as _sprocket_bio
 from .sprocket_bio import *
 
 __doc__ = _sprocket_bio.__doc__
-# __all__ = _sprocket_bio.__all__
+__all__ = _sprocket_bio.__all__

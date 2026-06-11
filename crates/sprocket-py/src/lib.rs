@@ -14,6 +14,12 @@ mod sprocket_bio {
     use pyo3::prelude::*;
     use pyo3::types::PyString;
 
+    #[pymodule]
+    mod diagnostics {
+        #[pymodule_export]
+        use wdl_diagnostics::Mode;
+    }
+
     /// Initializes the module.
     #[pymodule_init]
     fn init(module: &Bound<'_, PyModule>) -> PyResult<()> {
