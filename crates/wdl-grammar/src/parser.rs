@@ -11,6 +11,8 @@ use std::ops::DerefMut;
 
 use indexmap::IndexSet;
 use logos::Logos;
+#[cfg(feature = "unstable-python")]
+pub use python::PyEvent;
 
 use super::Diagnostic;
 use super::Span;
@@ -1284,6 +1286,161 @@ where
         }
 
         None
+    }
+}
+
+#[cfg(feature = "unstable-python")]
+mod python {
+    use pyo3::prelude::*;
+    use pyo3::types::PyType;
+
+    use crate::Span;
+    use crate::SyntaxKind;
+    use crate::parser::Event;
+
+    /// Represents an event produced by the parser.
+    ///
+    /// The parser produces a stream of events that can be used to construct
+    /// a CST.
+    #[pyclass(
+        module = "sprocket_bio.grammar.parser",
+        name = "Event",
+        frozen,
+        subclass
+    )]
+    #[expect(missing_debug_implementations)]
+    pub struct PyEvent;
+
+    #[pymethods]
+    impl PyEvent {
+        /// A new node has started.
+        #[classattr]
+        #[expect(non_snake_case)]
+        fn NodeStarted<'py>(py: Python<'py>) -> Bound<'py, PyType> {
+            PyType::new::<NodeStarted>(py)
+        }
+
+        /// A node has finished.
+        #[classattr]
+        #[expect(non_snake_case)]
+        fn NodeFinished<'py>(py: Python<'py>) -> Bound<'py, PyType> {
+            PyType::new::<NodeFinished>(py)
+        }
+
+        /// A token was encountered.
+        #[classattr]
+        #[expect(non_snake_case)]
+        fn Token<'py>(py: Python<'py>) -> Bound<'py, PyType> {
+            PyType::new::<Token>(py)
+        }
+
+        /// Gets an start node event for an abandoned node.
+        #[classmethod]
+        fn abandoned<'py>(cls: &Bound<'py, PyType>) -> PyResult<Bound<'py, NodeStarted>> {
+            let Event::NodeStarted {
+                kind,
+                forward_parent,
+            } = Event::abandoned()
+            else {
+                unreachable!("`Event::abandoned()` should return `Event::NodeStarted`")
+            };
+
+            Bound::new(
+                cls.py(),
+                NodeStarted::__new__(Py::new(cls.py(), kind)?, forward_parent),
+            )
+        }
+    }
+
+    /// A new node has started.
+    #[pyclass(module = "sprocket_bio.grammar.parser", extends = PyEvent, get_all, set_all)]
+    struct NodeStarted {
+        /// The kind of the node.
+        kind: Py<SyntaxKind>,
+        /// For left-recursive syntactic constructs, the parser produces
+        /// a child node before it sees a parent. `forward_parent`
+        /// saves the position of current event's parent.
+        forward_parent: Option<usize>,
+    }
+
+    #[pymethods]
+    impl NodeStarted {
+        #[classattr]
+        #[expect(non_upper_case_globals)]
+        const __qualname__: &'static str = "Event.NodeStarted";
+
+        #[new]
+        fn __new__(
+            kind: Py<SyntaxKind>,
+            forward_parent: Option<usize>,
+        ) -> PyClassInitializer<Self> {
+            PyClassInitializer::from(PyEvent).add_subclass(Self {
+                kind,
+                forward_parent,
+            })
+        }
+
+        fn __eq__<'py>(self_: PyRef<'py, Self>, other: Bound<'py, PyAny>) -> PyResult<bool> {
+            let Ok(other) = other.cast_exact::<Self>().map(Bound::borrow) else {
+                // If the other object is not a `NodeStarted`, it cannot be equal to self.
+                return Ok(false);
+            };
+
+            let py = self_.py();
+
+            Ok(*self_.kind.borrow(py) == *other.kind.borrow(py)
+                && self_.forward_parent == other.forward_parent)
+        }
+    }
+
+    /// A node has finished.
+    #[pyclass(module = "sprocket_bio.grammar.parser", extends = PyEvent, frozen, eq)]
+    #[derive(PartialEq)]
+    struct NodeFinished;
+
+    #[pymethods]
+    impl NodeFinished {
+        #[classattr]
+        #[expect(non_upper_case_globals)]
+        const __qualname__: &'static str = "Event.NodeFinished";
+
+        #[new]
+        fn __new__() -> PyClassInitializer<Self> {
+            PyClassInitializer::from(PyEvent).add_subclass(Self)
+        }
+    }
+
+    /// A token was encountered.
+    #[pyclass(module = "sprocket_bio.grammar.parser", extends = PyEvent, get_all, set_all)]
+    struct Token {
+        /// The syntax kind of the token.
+        kind: Py<SyntaxKind>,
+        /// The source span of the token.
+        span: Py<Span>,
+    }
+
+    #[pymethods]
+    impl Token {
+        #[classattr]
+        #[expect(non_upper_case_globals)]
+        const __qualname__: &'static str = "Event.Token";
+
+        #[new]
+        fn __new__(kind: Py<SyntaxKind>, span: Py<Span>) -> PyClassInitializer<Self> {
+            PyClassInitializer::from(PyEvent).add_subclass(Self { kind, span })
+        }
+
+        fn __eq__<'py>(self_: PyRef<'py, Self>, other: Bound<'py, PyAny>) -> PyResult<bool> {
+            let Ok(other) = other.cast_exact::<Self>().map(Bound::borrow) else {
+                // If the other object is not a `Token`, it cannot be equal to self.
+                return Ok(false);
+            };
+
+            let py = self_.py();
+
+            Ok(*self_.kind.borrow(py) == *other.kind.borrow(py)
+                && *self_.span.borrow(py) == *other.span.borrow(py))
+        }
     }
 }
 
